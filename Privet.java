@@ -30,6 +30,18 @@ public class Privet
 		
 		return false;
 	}
+	
+	public class NameTypePair
+	{
+		String name;
+		Short type;
+		
+		NameTypePair(String n, Short t)
+		{
+			name = n;
+			type = t;
+		}
+	}
 
 	private class ServerRecord
 	{
@@ -583,7 +595,7 @@ public class Privet
 		return tokens;
 	}
 
-	public ByteBuffer encodeData(List<String> services)
+	public ByteBuffer encodeData(List<NameTypePair> services)
 	{
 		ByteBuffer bbuf = ByteBuffer.allocate(8192);
 		List<String> tokens = null;
@@ -595,9 +607,11 @@ public class Privet
 
 		try
 		{
-			for (int i = 0; i < services.size(); ++i)
+			Iterator<NameTypePair> iter = services.iterator();
+			while (iter.hasNext())
 			{
-				tokens = tokenizeName(services.get(i), delim);
+				NameTypePair pair = iter.next();
+				tokens = tokenizeName(pair.name, delim);
 
 				for (int j = 0; j < tokens.size(); ++j)
 				{
@@ -635,7 +649,7 @@ public class Privet
 				else
 					need_null = true;
 
-				bbuf.putShort(mdns_types.get("ANY"));
+				bbuf.putShort(pair.type);
 				bbuf.putShort(mdns_classes.get("IN"));
 			}
 		}
