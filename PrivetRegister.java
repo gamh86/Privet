@@ -33,12 +33,15 @@ public class PrivetRegister extends Privet
     buffer.putShort((short)0);
     buffer.putShort((short)0);
     
-    List<NameType> pre;
-    serv = new NameType(service, (short)33);
-    pre.add(serv);
+    List<NameTypePair> pre;
+    NameTypePair pair = new NameTypePair(service, (short)33);
+    pre.add(pair);
     Iterator<String> iter = aliases.iterator();
     while (iter.hasNext())
-      pre.add(iter.next(), (short)1);
+    {
+      pair = new NameTypePair(iter.next(), (short)1);
+      pre.add(pair);
+    }
     encoded = encodeData(pre);
   }
 }
