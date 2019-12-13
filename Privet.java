@@ -19,6 +19,17 @@ public class Privet
 	private static final short mdns_header_size = (short)12;
 	private static final byte DNS_JUMP_INDICATOR = (byte)0xc0;
 	private static final short DNS_JUMP_OFFSET_BIAS = (short)((short)0x100 * (short)0xc0);
+	private static final int query_interval = 600000; /* milliseconds */
+	
+	private long time_last_query;
+	
+	private boolean should_query()
+	{
+		if ((System.currentTimeMillis() - time_last_query) >= query_interval)
+			return true;
+		
+		return false;
+	}
 
 	private class ServerRecord
 	{
@@ -224,7 +235,7 @@ public class Privet
 		{
 			mcast_group = InetAddress.getByName(mDNS_ipv4);
 			sock = new MulticastSocket(mDNS_port);
-			sock.setLoopbackMode(true);
+			sock.setLoopbackMode(false);
 			sock.joinGroup(mcast_group);
 		}
 		catch (Exception e)
@@ -259,6 +270,7 @@ public class Privet
 			ByteBuffer wrapper = ByteBuffer.wrap(packet_bytes);
 			DatagramPacket packet = new DatagramPacket(packet_bytes, packet_bytes.length, mcast_group, mDNS_port);
 			sock.send(packet);
+			time_last_query = System.currentTimeMillis();
 		}
 		catch (Exception e)
 		{
