@@ -20,6 +20,56 @@ public class Privet
 	private static final byte DNS_JUMP_INDICATOR = (byte)0xc0;
 	private static final short DNS_JUMP_OFFSET_BIAS = (short)((short)0x100 * (short)0xc0);
 
+	private class ServerRecord
+	{
+		private Short priority;
+		private Short weight;
+		private Short port;
+		private String target;
+
+		ServerRecord() {}
+
+		public Short getPriority()
+		{
+			return priority;
+		}
+
+		public Short getWeight()
+		{
+			return weight;
+		}
+
+		public Short getPort()
+		{
+			return port;
+		}
+
+		public String getTarget()
+		{
+			return target;
+		}
+
+		public void setPriority(p)
+		{
+			priority = p;
+		}
+
+		public void setWeight(w)
+		{
+			weight = w;
+		}
+
+		public void setPort(p)
+		{
+			port = p;
+		}
+
+		public void setTarget(t)
+		{
+			target = t;
+		}
+	}
+
 	private class mDNSRecord
 	{
 		private String name;
@@ -28,11 +78,22 @@ public class Privet
 		private Integer ttl;
 		private InetAddress inet4;
 		private InetAddress inet6;
-		private Map<String,String> text;
+		private Map<String,String> text_record;
 		private String pointer;
-		private ServerRecord server;
+		private ServerRecord server_record;
 
-		mDNSRecord() {}
+		mDNSRecord()
+		{
+			name = null;
+			type = (short)0;
+			klass = (short)0;
+			ttl = (int)0;
+			inet4 = null;
+			inet6 = null;
+			text_record = null;
+			pointer = null;
+			server_record = null;
+		}
 
 		public void setName(String n)
 		{
@@ -54,6 +115,31 @@ public class Privet
 			ttl = t;
 		}
 
+		public void setInet4(i)
+		{
+			inet4 = i;
+		}
+
+		public void setInet6(i)
+		{
+			inet6 = i;
+		}
+
+		public void setServerRecord(ServerRecord r)
+		{
+			server_record = r;
+		}
+
+		public void setTextRecord(Map<String,String> t)
+		{
+			text_record = t;
+		}
+
+		public void setPointer(String p)
+		{
+			pointer = p;
+		}
+
 		public String getName()
 		{
 			return name;
@@ -72,6 +158,31 @@ public class Privet
 		public Integer getTTL()
 		{
 			return ttl;
+		}
+
+		public InetAddress getInet4()
+		{
+			return inet4;
+		}
+
+		public InetAddress getInet6()
+		{
+			return inet6;
+		}
+
+		public ServerRecord getServerRecord()
+		{
+			return server_record;
+		}
+
+		public Map<String,String> getTextRecord()
+		{
+			return text_record;
+		}
+
+		public String getPointer()
+		{
+			return pointer;
 		}
 	}
 
@@ -104,6 +215,8 @@ public class Privet
 
 	private static MulticastSocket sock;
 	private static InetAddress mcast_group;
+
+	private List<mDNSRecord> records;
 
 	public Privet()
 	{
@@ -255,11 +368,12 @@ public class Privet
 		return new String("Unknown Class");
 	}
 
-	public void parseTextRecord(ByteBuffer buffer, int data_len)
+	public Map<String,String> parseTextRecord(ByteBuffer buffer, int data_len)
 	{
 		int kvlen = 0;
 		byte[] data = buffer.array();
 		int pos = buffer.position();
+		Map<String,String> text = new HashMap<String,String>();
 
 		System.out.println(" Text");
 		if (data_len == 1)
@@ -283,12 +397,17 @@ public class Privet
 			System.arraycopy(data, pos, kvpair, 0, kvlen);
 			String pair_str = new String(kvpair);
 			System.out.println("    >          " + pair_str);
+			pair_split = pair_str.split('=', 0);
+			if (pair_split.length == 1)
+				text.put(pair_split[0], "");
+			else
+				text.put(pair_split[0], pair_split[1]);
 			pos += kvlen;
 			data_len -= kvlen;
 		}
 
 		buffer.position(pos);
-		return;
+		return text;
 	}
 
 	public void parseRecords(ByteBuffer buffer, short nr_answers)
@@ -309,8 +428,16 @@ public class Privet
 			short data_len = buffer.getShort();
 
 			klass &= ~((short)0x8000);
+
+			mDNSRecord record = new mDNSRecord();
+
+			record.setName(name);
+			record.setType(type);
+			record.setClass(klass);
+			record.setTTL(ttl);
+
 			pos = buffer.position();
-			System.out.println(" Name          " + new String(name));
+			System.out.println(" Name          " + name;
 			System.out.println(" Type          " + getType(type) + " (" + type + ")");
 			System.out.println(" Class         " + getClass(klass) + " (" + klass + ")");
 			System.out.println(" TTL           " + ttl + " seconds");
@@ -332,17 +459,20 @@ public class Privet
 					e.printStackTrace();
 					System.exit(1);
 				}
+				record.setInet4(inet4);
 				System.out.println(" IPv4 Address  " + inet4.getHostAddress() + "\n");
 				break;
 				case 12:
 				String _name = decodeName(buffer);
 				System.out.println(" Pointer       " + _name + "\n");
 				pos = buffer.position();
+				record.setPointer(_name);
 				break;
 				case 16:
-				parseTextRecord(buffer, (int)data_len);
+				text_record = parseTextRecord(buffer, (int)data_len);
 				pos = buffer.position();
 				System.out.println("");
+				record.setTextRecord(text_record);
 				break;
 				case 28:
 				byte[] ipv6_bytes = new byte[16];
@@ -357,6 +487,7 @@ public class Privet
 					e.printStackTrace();
 					System.exit(1);
 				}
+				record.setInet6(inet6);
 				System.out.println(" IPv6 Address  " + inet6.getHostAddress() + "\n");
 				pos += 16;
 				buffer.position(pos);
@@ -366,6 +497,12 @@ public class Privet
 				short weight = buffer.getShort();
 				short port = buffer.getShort();
 				String target = decodeName(buffer);
+				ServerRecord server = new ServerRecord();
+				server.setPriority(prio);
+				server.setWeight(weight);
+				server.setPort(port);
+				server.setTarget(target);
+				record.setServerRecord(server);
 				pos = buffer.position();
 				System.out.println(" Priority      " + prio);
 				System.out.println(" Weight        " + weight);
@@ -377,6 +514,8 @@ public class Privet
 				buffer.position(pos);
 				System.out.println("");
 			}
+
+			records.add(record);
 		} /* for (i = 0; i < nr_answers; ++i) */
 	}
 
