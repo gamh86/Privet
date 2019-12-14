@@ -75,22 +75,22 @@ public class Privet
 			return target;
 		}
 
-		public void setPriority(p)
+		public void setPriority(short p)
 		{
 			priority = p;
 		}
 
-		public void setWeight(w)
+		public void setWeight(short w)
 		{
 			weight = w;
 		}
 
-		public void setPort(p)
+		public void setPort(short p)
 		{
 			port = p;
 		}
 
-		public void setTarget(t)
+		public void setTarget(String t)
 		{
 			target = t;
 		}
@@ -136,17 +136,17 @@ public class Privet
 			klass = c;
 		}
 
-		public void setTTL(Short t)
+		public void setTTL(int t)
 		{
 			ttl = t;
 		}
 
-		public void setInet4(i)
+		public void setInet4(InetAddress i)
 		{
 			inet4 = i;
 		}
 
-		public void setInet6(i)
+		public void setInet6(InetAddress i)
 		{
 			inet6 = i;
 		}
@@ -176,9 +176,9 @@ public class Privet
 			return type;
 		}
 
-		public Short getClass()
+		public Short getKlass()
 		{
-			return klass
+			return klass;
 		}
 
 		public Integer getTTL()
@@ -242,7 +242,7 @@ public class Privet
 		{
 			mcast_group = InetAddress.getByName(mDNS_ipv4);
 			sock = new MulticastSocket(mDNS_port);
-			sock.setLoopbackMode(false);
+			sock.setLoopbackMode(true); /* setLoopbackMode(boolean disable) */
 			sock.joinGroup(mcast_group);
 		}
 		catch (Exception e)
@@ -262,15 +262,16 @@ public class Privet
 	 */
 	public void queryServices()
 	{
-		List<NameTypePair> list = new List<NameTypePair>();
-		NameTypePair pair = new NameTypePair(SPECIAL_QUERY_ALL, mdns_types["PTR"]);
-		list.append(pair);
+		ArrayList<NameTypePair> list = new ArrayList<NameTypePair>();
+		NameTypePair pair = new NameTypePair(SPECIAL_QUERY_ALL, mdns_types.get("PTR"));
 		ByteBuffer data = encodeData(list);
 		ByteBuffer header = ByteBuffer.allocate(12);
 
+		list.add(pair);
+
 		header.putShort((short)0);
 		header.putShort((short)0);
-		header.putShort((short)services.size());
+		header.putShort((short)1);
 		header.putShort((short)0);
 		header.putShort((short)0);
 		header.putShort((short)0);
@@ -383,7 +384,7 @@ public class Privet
 		return new String("Unknown Type");
 	}
 
-	protected String getClass(short klass)
+	protected String getKlass(short klass)
 	{
 		for (Map.Entry<String,Short> entry : mdns_classes.entrySet())
 		{
@@ -405,7 +406,7 @@ public class Privet
 		if (data_len == 1)
 		{
 			buffer.position(buffer.position()+1);
-			return;
+			return text;
 		}
 
 		while (true)
@@ -423,7 +424,7 @@ public class Privet
 			System.arraycopy(data, pos, kvpair, 0, kvlen);
 			String pair_str = new String(kvpair);
 			System.out.println("    >          " + pair_str);
-			pair_split = pair_str.split('=', 0);
+			String[] pair_split = pair_str.split("=", 0);
 			if (pair_split.length == 1)
 				text.put(pair_split[0], "");
 			else
@@ -463,9 +464,9 @@ public class Privet
 			record.setTTL(ttl);
 
 			pos = buffer.position();
-			System.out.println(" Name          " + name;
+			System.out.println(" Name          " + name);
 			System.out.println(" Type          " + getType(type) + " (" + type + ")");
-			System.out.println(" Class         " + getClass(klass) + " (" + klass + ")");
+			System.out.println(" Class         " + getKlass(klass) + " (" + klass + ")");
 			System.out.println(" TTL           " + ttl + " seconds");
 
 			switch(type)
@@ -495,7 +496,7 @@ public class Privet
 				record.setPointer(_name);
 				break;
 				case 16:
-				text_record = parseTextRecord(buffer, (int)data_len);
+				Map<String,String> text_record = parseTextRecord(buffer, (int)data_len);
 				pos = buffer.position();
 				System.out.println("");
 				record.setTextRecord(text_record);
@@ -584,11 +585,6 @@ public class Privet
 		parseRecords(buf, total_answers);
 
 		return;
-	}
-
-	private List<String> getServices()
-	{
-		return services;
 	}
 
 	protected List<String> tokenizeName(String name, byte c)
