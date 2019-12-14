@@ -11,17 +11,17 @@ import java.util.Map;
 
 public class Privet
 {
-	private static final String mDNS_ipv4 = "224.0.0.251";
-	private static final String mDNS_ipv6 = "ff02::fb";
-	private static final Short mDNS_port = 5353;
-	private static final Map<String,Short> mdns_types = __create_types_map();
-	private static final Map<String,Short> mdns_classes = __create_classes_map();
-	private static final short mdns_header_size = (short)12;
-	private static final byte DNS_JUMP_INDICATOR = (byte)0xc0;
-	private static final short DNS_JUMP_OFFSET_BIAS = (short)((short)0x100 * (short)0xc0);
-	private static final int query_interval = 600000; /* milliseconds */
+	protected static final String mDNS_ipv4 = "224.0.0.251";
+	protected static final String mDNS_ipv6 = "ff02::fb";
+	protected static final Short mDNS_port = 5353;
+	protected static final Map<String,Short> mdns_types = __create_types_map();
+	protected static final Map<String,Short> mdns_classes = __create_classes_map();
+	protected static final short mdns_header_size = (short)12;
+	protected static final byte DNS_JUMP_INDICATOR = (byte)0xc0;
+	protected static final short DNS_JUMP_OFFSET_BIAS = (short)((short)0x100 * (short)0xc0);
+	protected static final int query_interval = 600000; /* milliseconds */
 	
-	private long time_last_query;
+	protected long time_last_query;
 	
 	private boolean should_query()
 	{
@@ -43,7 +43,7 @@ public class Privet
 		}
 	}
 
-	private class ServerRecord
+	protected class ServerRecord
 	{
 		private Short priority;
 		private Short weight;
@@ -93,7 +93,7 @@ public class Privet
 		}
 	}
 
-	private class mDNSRecord
+	protected class mDNSRecord
 	{
 		private String name;
 		private Short type;
@@ -209,7 +209,7 @@ public class Privet
 		}
 	}
 
-	private static Map<String,Short> __create_types_map()
+	protected static Map<String,Short> __create_types_map()
 	{
 		Map<String,Short> __static_types_map = new HashMap<String,Short>();
 		__static_types_map.put("A", (short)1);
@@ -221,22 +221,20 @@ public class Privet
 		return Collections.unmodifiableMap(__static_types_map);
 	}
 
-	private static Map<String,Short> __create_classes_map()
+	protected static Map<String,Short> __create_classes_map()
 	{
 		Map<String,Short> __static_classes_map = new HashMap<String,Short>();
 		__static_classes_map.put("IN", (short)1);
 		return Collections.unmodifiableMap(__static_classes_map);
 	}
 
-	private static List<String> services = new ArrayList<String>(Arrays.asList(
+	protected static List<String> services = new ArrayList<String>(Arrays.asList(
 		"_http._tcp.local",
 		"_ftp._tcp.local",
 		"_ipp._tcp.local",
-		"_sip._udp.local",
-		"_sleep_proxy._udp.local",
-		"_tivo._tcp.local"));
+		"_sip._udp.local"));
 
-	private static MulticastSocket sock;
+	protected static MulticastSocket sock;
 	private static InetAddress mcast_group;
 
 	private List<mDNSRecord> records;
@@ -261,6 +259,10 @@ public class Privet
 		}
 	}
 
+	/*
+	 * Query for the list of service types
+	 * stored in List<String> services.
+	 */
 	public void queryServices()
 	{
 		ByteBuffer data = encodeData(getServices());
@@ -291,7 +293,7 @@ public class Privet
 		}
 	}
 
-	private void parseQueries(ByteBuffer buffer, int nr_qs)
+	protected void parseQueries(ByteBuffer buffer, int nr_qs)
 	{
 		byte[] data = buffer.array();
 
@@ -314,7 +316,7 @@ public class Privet
 		return;
 	}
 
-	private String decodeName(ByteBuffer buffer)
+	protected String decodeName(ByteBuffer buffer)
 	{
 		byte[] data = buffer.array();
 		byte[] name = new byte[256];
@@ -370,7 +372,7 @@ public class Privet
 		return __name;
 	}
 
-	private String getType(short type)
+	protected String getType(short type)
 	{
 		for (Map.Entry<String,Short> entry : mdns_types.entrySet())
 		{
@@ -381,7 +383,7 @@ public class Privet
 		return new String("Unknown Type");
 	}
 
-	private String getClass(short klass)
+	protected String getClass(short klass)
 	{
 		for (Map.Entry<String,Short> entry : mdns_classes.entrySet())
 		{
@@ -392,7 +394,7 @@ public class Privet
 		return new String("Unknown Class");
 	}
 
-	public Map<String,String> parseTextRecord(ByteBuffer buffer, int data_len)
+	protected Map<String,String> parseTextRecord(ByteBuffer buffer, int data_len)
 	{
 		int kvlen = 0;
 		byte[] data = buffer.array();
@@ -434,7 +436,7 @@ public class Privet
 		return text;
 	}
 
-	public void parseRecords(ByteBuffer buffer, short nr_answers)
+	protected void parseRecords(ByteBuffer buffer, short nr_answers)
 	{
 		byte len;
 		byte[] data = buffer.array();
@@ -584,18 +586,18 @@ public class Privet
 		return;
 	}
 
-	public List<String> getServices()
+	private List<String> getServices()
 	{
 		return services;
 	}
 
-	private List<String> tokenizeName(String name, byte c)
+	protected List<String> tokenizeName(String name, byte c)
 	{
 		List<String> tokens = new ArrayList<String>(Arrays.asList(name.split("\\.", 0)));
 		return tokens;
 	}
 
-	public ByteBuffer encodeData(List<NameTypePair> services)
+	protected ByteBuffer encodeData(List<NameTypePair> services)
 	{
 		ByteBuffer bbuf = ByteBuffer.allocate(8192);
 		List<String> tokens = null;
