@@ -1,6 +1,7 @@
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,28 +21,149 @@ public class PrivetRegister extends Privet
     host = h;
     aliases = a;
   }
-  
-  PrivetRegister(String service, List<String> aliases)
+
+	private InetAddress getLocalIPv4()
+	{
+		InetAddress inet = null;
+
+		try
+		{
+			NetworkInterface iface = NetworkInterface.getByName("wlp2s0");
+			Enumeration<InetAddress> inets = iface.getInetAddresses();
+			inet = inets.nextElement();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			System.exit(1);
+		}
+		finally
+		{
+			System.out.println("Got local ip: " + inet.getHostAddress());
+			return inet;
+		}
+	}
+
+	private Map<String,Short> labels = null;
+
+	private ByteBuffer encodeName(String name)
+	{
+		ByteBuffer buffer = ByteBuffer.allocate(6000);
+		List<String> tokens = tokenizeName(name, (byte)'.');
+		int pos = 0;
+		boolean need_null = false;
+
+		if (tokens.isEmpty())
+			return buffer;
+
+		buffer.order(ByteOrder.BIG_ENDIAN);
+
+		Iterator<String> iter = tokens.iterator();
+		while (iter.hasNext())
+		{
+			String token = iter.next();
+			if (labels.containsKey(token))
+			{
+				short offset = labels.get(token);
+				offset += DNS_JUMP_OFFSET_BIAS;
+				buffer.putShort(offset);
+				pos = buffer.position();
+				need_null = false;
+				break;
+			}
+			else
+			{
+				short offset = (short)((short)12 + (short)buffer.position());
+				labels.put(token, offset);
+				byte[] data = buffer.array();
+				pos = buffer.position();
+				data[pos++] = (byte)token.length();
+				System.arraycopy(token.getBytes(), 0, data, pos, token.length());
+				pos += token.length();
+				buffer.position(pos);
+			}
+		}
+
+		if (true == need_null)
+		{
+			pos = buffer.position();
+			byte[] data = buffer.array();
+			data[pos++] = (byte)0;
+			buffer.position(pos);
+		}
+
+		return buffer;
+	}
+
+	private ByteBuffer createSRVQuery(String host, String alias, InetAddress inet)
+	{
+		ByteBuffer buffer = ByteBuffer.allocate(6000);
+		byte[] data = null;
+		int pos = 0;
+
+		if (null == labels)
+			labels = new HashMap<String,Short>();
+		else
+			labels.clear();
+
+		ByteBuffer encoded_host = encodeName(host);
+		System.arraycopy(encoded_host.array(), 0, buffer.array(), pos, encoded_host.position());
+		pos += encoded_host.position();
+		buffer.position(pos);
+		buffer.putShort(mdns_types.get("SRV"));
+		buffer.putShort(mdns_classes.get("IN"));
+		pos = buffer.position();
+		ByteBuffer encoded_alias = encodeName(alias);
+		System.arraycopy(encoded_alias.array(), 0, buffer.array(), pos, encoded_alias.position());
+		pos += encoded_alias.position();
+		buffer.putShort(mdns_types.get("A"));
+		buffer.putShort(mdns_classes.get("IN"));
+		pos = buffer.position();
+		System.arraycopy(inet.getAddress(), 0, buffer.array(), pos, 4);
+		pos += 4;
+		buffer.position(pos);
+
+		return buffer;
+	}
+
+  public void registerService()
   {
-    byte[] data = new byte[8192];
-    ByteBuffer buffer = ByteBuffer.wrap(data);
-    
-    buffer.putShort((short)0);
-    buffer.putShort((short)0x8000);
-    buffer.putShort((short)aliases.size() + 1);
-    buffer.putShort((short)0);
-    buffer.putShort((short)0);
-    buffer.putShort((short)0);
-    
-    List<NameTypePair> pre;
-    NameTypePair pair = new NameTypePair(service, (short)33);
-    pre.add(pair);
-    Iterator<String> iter = aliases.iterator();
-    while (iter.hasNext())
-    {
-      pair = new NameTypePair(iter.next(), (short)1);
-      pre.add(pair);
-    }
-    encoded = encodeData(pre);
+		ByteBuffer SRVQuery = createSRVQuery("_http._tcp.local", "home-movies.local", getLocalIPv4());
+		ByteBuffer mdns_header = ByteBuffer.allocate(12);
+
+		mdns_header.putShort((short)0);
+		mdns_header.putShort((short)0);
+		mdns_header.putShort((short)2);
+		mdns_header.putShort((short)0);
+		mdns_header.putShort((short)0);
+		mdns_header.putShort((short)0);
+
+		byte[] packet = new byte[12 + SRVQuery.position()];
+		byte[] packet_in = new byte[8192];
+
+		DatagramPacket dgram_packet = new DatagramPacket(packet, packet.length, mcast_group, mDNS_port);
+		DatagramPacket dgram_in = new DatagramPacket(packet_in, packet_in.length);
+
+		System.arraycopy(mdns_header.array(), 0, packet, 0, 12);
+		System.arraycopy(SRVQuery.array(), 0, packet, 12, SRVQuery.position());
+
+		try
+		{
+			sock.send(dgram_packet);
+			sock.receive(dgram_in);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			System.exit(1);
+		}
   }
+
+	public static void main(String argv[])
+	{
+		List<String> aliases = new ArrayList<String>();
+		aliases.add("home-movies.local");
+		PrivetRegister reg = new PrivetRegister("_http._tcp.local", aliases);
+		reg.registerService();
+	}
 }
