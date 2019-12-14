@@ -232,7 +232,7 @@ public class Privet
 	}
 
 	protected static MulticastSocket sock;
-	private static InetAddress mcast_group;
+	protected static InetAddress mcast_group;
 
 	private List<mDNSRecord> records;
 
@@ -283,7 +283,6 @@ public class Privet
 		{
 			System.arraycopy(header.array(), 0, packet_bytes, 0, 12);
 			System.arraycopy(data.array(), 0, packet_bytes, 12, data.position());
-			ByteBuffer wrapper = ByteBuffer.wrap(packet_bytes);
 			DatagramPacket packet = new DatagramPacket(packet_bytes, packet_bytes.length, mcast_group, mDNS_port);
 			sock.send(packet);
 			time_last_query = System.currentTimeMillis();
