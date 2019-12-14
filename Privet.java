@@ -252,6 +252,7 @@ public class Privet
 		}
 		finally
 		{
+			records = new ArrayList<mDNSRecord>();
 			System.out.println("Joined multicast group " + mDNS_ipv4);
 		}
 	}
@@ -264,10 +265,10 @@ public class Privet
 	{
 		ArrayList<NameTypePair> list = new ArrayList<NameTypePair>();
 		NameTypePair pair = new NameTypePair(SPECIAL_QUERY_ALL, mdns_types.get("PTR"));
-		ByteBuffer data = encodeData(list);
 		ByteBuffer header = ByteBuffer.allocate(12);
 
 		list.add(pair);
+		ByteBuffer data = encodeData(list);
 
 		header.putShort((short)0);
 		header.putShort((short)0);
@@ -660,12 +661,52 @@ public class Privet
 		return bbuf;
 	}
 
+	public void dumpCachedRecords()
+	{
+		Iterator<mDNSRecord> iter = records.iterator();
+		while (iter.hasNext())
+		{
+			mDNSRecord record = iter.next();
+			System.out.println("Name  " + record.getName());
+			System.out.println("Type  " + record.getType());
+			System.out.println("Class  " + record.getKlass());
+			InetAddress inet4 = record.getInet4();
+			if (null != inet4)
+				System.out.println("IPv4  " + inet4.getHostAddress());
+			InetAddress inet6 = record.getInet6();
+			if (null != inet6)
+				System.out.println("IPv6  " + inet6.getHostAddress());
+			String ptr = record.getPointer();
+			if (null != ptr)
+				System.out.println("Pointer  " + ptr);
+			Map<String,String> text = record.getTextRecord();
+			if (null != text)
+			{
+				for (Map.Entry<String,String> entry : text.entrySet())
+					System.out.println(entry.getKey() + "=" + entry.getValue());
+			}
+		}
+	}
+
+	public void showLocalServices()
+	{
+		Iterator<mDNSRecord> iter = records.iterator();
+		while (iter.hasNext())
+		{
+			mDNSRecord record = iter.next();
+			String ptr = record.getPointer();
+			if (null != ptr)
+				System.out.println(ptr);
+		}
+	}
+
 	public static void main(String argv[])
 	{
 		Privet privet = new Privet();
 
 		privet.queryServices();
 		privet.getReplies();
+		privet.showLocalServices();
 		System.exit(0);
 	}
 }
