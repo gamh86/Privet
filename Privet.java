@@ -20,6 +20,9 @@ public class Privet
 	protected static final byte DNS_JUMP_INDICATOR = (byte)0xc0;
 	protected static final short DNS_JUMP_OFFSET_BIAS = (short)((short)0x100 * (short)0xc0);
 	protected static final int query_interval = 600000; /* milliseconds */
+	protected static final String SPECIAL_QUERY_ALL = "_services._dns-sd._udp.local";
+	protected static final String QUERY_HTTP = "_http._tcp.local";
+	protected static final String QUERY_PRINTER = "_ipp._tcp.local";
 	
 	protected long time_last_query;
 	
@@ -228,12 +231,6 @@ public class Privet
 		return Collections.unmodifiableMap(__static_classes_map);
 	}
 
-	protected static List<String> services = new ArrayList<String>(Arrays.asList(
-		"_http._tcp.local",
-		"_ftp._tcp.local",
-		"_ipp._tcp.local",
-		"_sip._udp.local"));
-
 	protected static MulticastSocket sock;
 	private static InetAddress mcast_group;
 
@@ -265,7 +262,10 @@ public class Privet
 	 */
 	public void queryServices()
 	{
-		ByteBuffer data = encodeData(getServices());
+		List<NameTypePair> list = new List<NameTypePair>();
+		NameTypePair pair = new NameTypePair(SPECIAL_QUERY_ALL, mdns_types["PTR"]);
+		list.append(pair);
+		ByteBuffer data = encodeData(list);
 		ByteBuffer header = ByteBuffer.allocate(12);
 
 		header.putShort((short)0);
