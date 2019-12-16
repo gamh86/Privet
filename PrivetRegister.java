@@ -44,8 +44,6 @@ public class PrivetRegister extends Privet
 		}
 	}
 
-	private Map<String,Short> labels = null;
-
 	private ByteBuffer encodeName(String name)
 	{
 		ByteBuffer buffer = ByteBuffer.allocate(6000);
@@ -62,9 +60,9 @@ public class PrivetRegister extends Privet
 		while (iter.hasNext())
 		{
 			String token = iter.next();
-			if (labels.containsKey(token))
+			if (label_cache.containsKey(token))
 			{
-				short offset = labels.get(token);
+				short offset = label_cache.get(token);
 				offset += DNS_JUMP_OFFSET_BIAS;
 				buffer.putShort(offset);
 				pos = buffer.position();
@@ -74,7 +72,7 @@ public class PrivetRegister extends Privet
 			else
 			{
 				short offset = (short)((short)12 + (short)buffer.position());
-				labels.put(token, offset);
+				label_cache.put(token, offset);
 				byte[] data = buffer.array();
 				pos = buffer.position();
 				data[pos++] = (byte)token.length();
@@ -100,11 +98,8 @@ public class PrivetRegister extends Privet
 		ByteBuffer buffer = ByteBuffer.allocate(6000);
 		byte[] data = null;
 		int pos = 0;
-
-		if (null == labels)
-			labels = new HashMap<String,Short>();
-		else
-			labels.clear();
+		
+		clearLabelCache();
 
 		ByteBuffer encoded_host = encodeName(host);
 		System.arraycopy(encoded_host.array(), 0, buffer.array(), pos, encoded_host.position());
@@ -126,8 +121,14 @@ public class PrivetRegister extends Privet
 		return buffer;
 	}
 
-  public void registerService()
-  {
+	/**
+	 * Register a service.
+	 * Query our own service first to detect the
+	 * unlikely event that a service of that name
+	 * already exists on the local network.
+	 */
+	public void registerService()
+	{
 		ByteBuffer SRVQuery = createSRVQuery("_http._tcp.local", "home-movies.local", getLocalIPv4());
 		ByteBuffer mdns_header = ByteBuffer.allocate(12);
 
@@ -157,7 +158,7 @@ public class PrivetRegister extends Privet
 			e.printStackTrace();
 			System.exit(1);
 		}
-  }
+	}
 
 	public static void main(String argv[])
 	{
