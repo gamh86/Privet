@@ -245,6 +245,7 @@ public class Privet
 			sock = new MulticastSocket(mDNS_port);
 			sock.setLoopbackMode(true); /* setLoopbackMode(boolean disable) */
 			sock.joinGroup(mcast_group);
+			label_cache = new HashMap<String,Short();
 		}
 		catch (Exception e)
 		{
@@ -258,8 +259,18 @@ public class Privet
 		}
 	}
 	
+	/**
+	 * Call this before beginning to encode data
+	 * for a new query. The query may need more
+	 * than one function for putting together the
+	 * total request data. This is why we need a
+	 * label cache that has the same scope as the
+	 * class as a whole for it to live as long as
+	 * we require.
+	 */
 	protected void clearLabelCache()
 	{
+		
 		label_cache.clear();
 	}
 	
@@ -267,7 +278,6 @@ public class Privet
 	{
 		ByteBuffer bbuf = ByteBuffer.allocate(8192);
 		List<String> tokens = null;
-		Map<String,Short> labels = new HashMap<String,Short>();
 		boolean need_null = true;
 		byte delim = (byte)'.';
 
@@ -341,6 +351,7 @@ public class Privet
 		ByteBuffer header = ByteBuffer.allocate(12);
 
 		list.add(pair);
+		clearLabelCache();
 		ByteBuffer data = encodeData(list);
 
 		header.putShort((short)0);
