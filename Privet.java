@@ -233,6 +233,7 @@ public class Privet
 
 	protected static MulticastSocket sock;
 	protected static InetAddress mcast_group;
+	protected Map<String,Short> label_cache;
 
 	private List<mDNSRecord> records;
 
@@ -255,6 +256,78 @@ public class Privet
 			records = new ArrayList<mDNSRecord>();
 			System.out.println("Joined multicast group " + mDNS_ipv4);
 		}
+	}
+	
+	protected void clearLabelCache()
+	{
+		label_cache.clear();
+	}
+	
+	protected ByteBuffer encodeData(List<NameTypePair> services)
+	{
+		ByteBuffer bbuf = ByteBuffer.allocate(8192);
+		List<String> tokens = null;
+		Map<String,Short> labels = new HashMap<String,Short>();
+		boolean need_null = true;
+		byte delim = (byte)'.';
+
+		bbuf.order(ByteOrder.BIG_ENDIAN);
+
+		try
+		{
+			Iterator<NameTypePair> iter = services.iterator();
+			while (iter.hasNext())
+			{
+				NameTypePair pair = iter.next();
+				tokens = tokenizeName(pair.name, delim);
+
+				for (int j = 0; j < tokens.size(); ++j)
+				{
+					String token = tokens.get(j);
+
+					if (labels.containsKey(token) == true)
+					{
+						short offset = labels.get(token);
+						offset += (0xc0 * 0x100);
+						bbuf.putShort(offset);
+
+						need_null = false;
+						break;
+					}
+					else
+					{
+						short pos = (short)bbuf.position();
+						short offset = (short)(mdns_header_size + (short)pos);
+						labels.put(token, offset);
+
+						byte[] len = new byte[1];
+						len[0] = (byte)token.length();
+						byte[] token_bytes = token.getBytes();
+						bbuf.put(len, 0, 1);
+						bbuf.put(token_bytes, 0, token.length());
+					}
+				}
+
+				if (need_null == true)
+				{
+					byte[] _null = new byte[1];
+					_null[0] = (byte)0;
+					bbuf.put(_null, 0, 1);
+				}
+				else
+					need_null = true;
+
+				bbuf.putShort(pair.type);
+				bbuf.putShort(mdns_classes.get("IN"));
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			System.exit(1);
+		}
+
+		return bbuf;
 	}
 
 	/*
@@ -591,73 +664,6 @@ public class Privet
 	{
 		List<String> tokens = new ArrayList<String>(Arrays.asList(name.split("\\.", 0)));
 		return tokens;
-	}
-
-	protected ByteBuffer encodeData(List<NameTypePair> services)
-	{
-		ByteBuffer bbuf = ByteBuffer.allocate(8192);
-		List<String> tokens = null;
-		Map<String,Short> labels = new HashMap<String,Short>();
-		boolean need_null = true;
-		byte delim = (byte)'.';
-
-		bbuf.order(ByteOrder.BIG_ENDIAN);
-
-		try
-		{
-			Iterator<NameTypePair> iter = services.iterator();
-			while (iter.hasNext())
-			{
-				NameTypePair pair = iter.next();
-				tokens = tokenizeName(pair.name, delim);
-
-				for (int j = 0; j < tokens.size(); ++j)
-				{
-					String token = tokens.get(j);
-
-					if (labels.containsKey(token) == true)
-					{
-						short offset = labels.get(token);
-						offset += (0xc0 * 0x100);
-						bbuf.putShort(offset);
-
-						need_null = false;
-						break;
-					}
-					else
-					{
-						short pos = (short)bbuf.position();
-						short offset = (short)(mdns_header_size + (short)pos);
-						labels.put(token, offset);
-
-						byte[] len = new byte[1];
-						len[0] = (byte)token.length();
-						byte[] token_bytes = token.getBytes();
-						bbuf.put(len, 0, 1);
-						bbuf.put(token_bytes, 0, token.length());
-					}
-				}
-
-				if (need_null == true)
-				{
-					byte[] _null = new byte[1];
-					_null[0] = (byte)0;
-					bbuf.put(_null, 0, 1);
-				}
-				else
-					need_null = true;
-
-				bbuf.putShort(pair.type);
-				bbuf.putShort(mdns_classes.get("IN"));
-			}
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			System.exit(1);
-		}
-
-		return bbuf;
 	}
 
 	public void dumpCachedRecords()
