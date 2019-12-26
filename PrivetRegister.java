@@ -26,6 +26,12 @@ public class PrivetRegister extends Privet
 	{
 		InetAddress inet = null;
 
+/*
+ * TODO:
+ *
+ * Loop through the different interaces on
+ * the system and find a suitable canditate.
+ */
 		try
 		{
 			NetworkInterface iface = NetworkInterface.getByName("wlp2s0");
