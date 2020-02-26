@@ -245,7 +245,7 @@ public class Privet
 			sock = new MulticastSocket(mDNS_port);
 			sock.setLoopbackMode(true); /* setLoopbackMode(boolean disable) */
 			sock.joinGroup(mcast_group);
-			label_cache = new HashMap<String,Short();
+			label_cache = new HashMap<String,Short>();
 		}
 		catch (Exception e)
 		{
