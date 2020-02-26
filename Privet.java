@@ -295,10 +295,10 @@ public class Privet
 				{
 					String token = tokens.get(j);
 
-					if (labels.containsKey(token) == true)
+					if (label_cache.containsKey(token) == true)
 					{
-						short offset = labels.get(token);
-						offset += (0xc0 * 0x100);
+						short offset = label_cache.get(token);
+						offset += (0xc0 << 8);
 						bbuf.putShort(offset);
 
 						need_null = false;
@@ -308,7 +308,7 @@ public class Privet
 					{
 						short pos = (short)bbuf.position();
 						short offset = (short)(mdns_header_size + (short)pos);
-						labels.put(token, offset);
+						label_cache.put(token, offset);
 
 						byte[] len = new byte[1];
 						len[0] = (byte)token.length();
